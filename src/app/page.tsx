@@ -1,14 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import ChatInterface from "@/components/chat-interface"
 import Header from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { MessageCircle } from "lucide-react"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'chat'>('chat')
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
