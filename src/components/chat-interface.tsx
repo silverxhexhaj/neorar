@@ -16,7 +16,7 @@ interface ChatMessage {
 }
 
 // N8N Webhook URL for chat messages
-const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv832202.hstgr.cloud/webhook-test/2494dd6d-523d-4eb3-80cb-ac56ac244c5e'
+const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv832202.hstgr.cloud/webhook/2494dd6d-523d-4eb3-80cb-ac56ac244c5e'
 
 // Function to send chat message to n8n webhook and get response
 const sendMessageToWebhook = async (message: string) => {
