@@ -7,101 +7,62 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, User, Bot, MessageCircle } from "lucide-react"
 
-interface Message {
+// Simple Message Interface
+interface ChatMessage {
   id: string
   content: string
   sender: 'user' | 'bot'
   timestamp: Date
 }
 
-const barberResponses = [
-  // Appointment-related responses
-  "I'd be happy to help you book an appointment! Our most popular times are weekday afternoons and Saturday mornings. What day works best for you?",
-  "Great choice! Let me help you schedule that. We have availability this week - would you prefer morning, afternoon, or evening?",
-  "Perfect! I can get you set up with one of our skilled barbers. Do you have a preference for who you'd like to see?",
-  
-  // Service-related responses
-  "Our signature services include precision haircuts, classic hot towel shaves, and beard styling. What type of service interests you most?",
-  "We specialize in everything from traditional cuts to modern fades. Our barbers stay current with all the latest trends and techniques.",
-  "For a complete grooming experience, I'd recommend our haircut and beard trim combo - it's very popular with our clients!",
-  
-  // Staff-related responses
-  "Our team includes master barbers with years of experience. Mike specializes in classic cuts, while Alex is known for modern fades and styling.",
-  "Each of our barbers has their own specialties. Would you like to know more about their experience and what they're best at?",
-  
-  // Pricing and general info
-  "Our pricing starts at $35 for a standard cut, with premium services available. We believe in providing excellent value for professional grooming.",
-  "We're open Monday through Saturday, with extended hours to fit your schedule. Sunday is our day to recharge!",
-  "Quality is our top priority - we use premium products and take our time to ensure you leave looking and feeling your best.",
-  
-  // General helpful responses
-  "I'm here to help with anything you need - booking appointments, learning about our services, or answering questions about grooming and style.",
-  "Feel free to ask me about our services, availability, or anything else related to men's grooming. I'm here to help!",
-  "Whether you're looking for a quick trim or a complete style makeover, we've got you covered. What brings you in today?"
-]
+// N8N Webhook URL for chat messages
+const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv832202.hstgr.cloud/webhook-test/2494dd6d-523d-4eb3-80cb-ac56ac244c5e'
 
-const getContextualResponse = (userMessage: string): string => {
-  const message = userMessage.toLowerCase()
-  
-  // Appointment-related keywords
-  if (message.includes('book') || message.includes('appointment') || message.includes('schedule')) {
-    const appointmentResponses = [
-      "I'd be happy to help you book an appointment! Our most popular times are weekday afternoons and Saturday mornings. What day works best for you?",
-      "Great choice! Let me help you schedule that. We have availability this week - would you prefer morning, afternoon, or evening?",
-      "Perfect! I can get you set up with one of our skilled barbers. Do you have a preference for who you'd like to see?"
-    ]
-    return appointmentResponses[Math.floor(Math.random() * appointmentResponses.length)]
+// Function to send chat message to n8n webhook and get response
+const sendMessageToWebhook = async (message: string) => {
+  try {
+    const chatData = {
+      message: message,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+      source: 'chat-interface'
+    }
+
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(chatData)
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log('Message sent to n8n webhook:', result)
+    
+    // Return the bot response from n8n
+    return { 
+      success: true, 
+      botResponse: result.output || result.message || "I'm here to help! How can I assist you today?"
+    }
+  } catch (error) {
+    console.error('Error sending message to n8n webhook:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      botResponse: "I'm having trouble connecting right now. Please try again in a moment."
+    }
   }
-  
-  // Service-related keywords
-  if (message.includes('haircut') || message.includes('cut') || message.includes('trim') || message.includes('service')) {
-    const serviceResponses = [
-      "Our signature services include precision haircuts, classic hot towel shaves, and beard styling. What type of service interests you most?",
-      "We specialize in everything from traditional cuts to modern fades. Our barbers stay current with all the latest trends and techniques.",
-      "For a complete grooming experience, I'd recommend our haircut and beard trim combo - it's very popular with our clients!"
-    ]
-    return serviceResponses[Math.floor(Math.random() * serviceResponses.length)]
-  }
-  
-  // Staff-related keywords
-  if (message.includes('barber') || message.includes('staff') || message.includes('team')) {
-    const staffResponses = [
-      "Our team includes master barbers with years of experience. Mike specializes in classic cuts, while Alex is known for modern fades and styling.",
-      "Each of our barbers has their own specialties. Would you like to know more about their experience and what they're best at?",
-      "We have four talented barbers on staff, each with their own expertise. I can help you find the perfect match for your style preferences."
-    ]
-    return staffResponses[Math.floor(Math.random() * staffResponses.length)]
-  }
-  
-  // Price-related keywords
-  if (message.includes('price') || message.includes('cost') || message.includes('how much')) {
-    const priceResponses = [
-      "Our pricing starts at $35 for a standard cut, with premium services available. We believe in providing excellent value for professional grooming.",
-      "Prices vary by service: haircuts start at $35, beard trims at $25, and hot towel shaves at $45. Combo packages offer great value!",
-      "We offer competitive pricing with exceptional quality. A standard cut is $35, and we often have package deals for regular clients."
-    ]
-    return priceResponses[Math.floor(Math.random() * priceResponses.length)]
-  }
-  
-  // Hours-related keywords
-  if (message.includes('hours') || message.includes('open') || message.includes('time')) {
-    const hoursResponses = [
-      "We're open Monday through Saturday, 9 AM to 7 PM. Sunday is our day to recharge! What day works best for you?",
-      "Our hours are 9 AM to 7 PM Monday through Friday, and 8 AM to 6 PM on Saturday. We're closed Sundays.",
-      "We're open six days a week with extended hours to fit your schedule. Would you like to know about our current availability?"
-    ]
-    return hoursResponses[Math.floor(Math.random() * hoursResponses.length)]
-  }
-  
-  // Default to random response
-  return barberResponses[Math.floor(Math.random() * barberResponses.length)]
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: 'Welcome to BarberBot! 👋 I\'m here to help you book appointments, learn about our services, and answer any questions about our barber shop. Whether you\'re looking for a classic cut, modern fade, or full grooming experience, I\'ve got you covered. How can I assist you today?',
+      content: 'Welcome to BarberBot! 👋 I\'m here to help you with anything related to our barbershop. Just chat with me naturally and I\'ll do my best to assist you!',
       sender: 'bot',
       timestamp: new Date()
     }
@@ -126,30 +87,30 @@ export default function ChatInterface() {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
-    const newMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: inputValue,
       sender: 'user',
       timestamp: new Date()
     }
 
-    setMessages(prev => [...prev, newMessage])
+    setMessages(prev => [...prev, userMessage])
     const userInput = inputValue
     setInputValue('')
     setIsTyping(true)
 
-    // Simulate bot response with contextual barber-specific responses
-    setTimeout(() => {
-      const contextualResponse = getContextualResponse(userInput)
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: contextualResponse,
-        sender: 'bot',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, botResponse])
-      setIsTyping(false)
-    }, 1200)
+    // Send message to n8n webhook and get bot response
+    const result = await sendMessageToWebhook(userInput)
+    
+    const botMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      content: result.botResponse,
+      sender: 'bot',
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, botMessage])
+    setIsTyping(false)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -168,7 +129,7 @@ export default function ChatInterface() {
           </div>
           <div>
             <h2 className="text-lg font-semibold">Chat with BarberBot</h2>
-            <p className="text-sm text-muted-foreground">Your personal grooming assistant</p>
+            <p className="text-sm text-muted-foreground">Your personal barbershop assistant</p>
           </div>
         </div>
       </div>
@@ -199,6 +160,7 @@ export default function ChatInterface() {
                 }`}
               >
                 <p className="text-sm leading-relaxed">{message.content}</p>
+                
                 <span className="text-xs opacity-70 mt-2 block">
                   {message.timestamp.toLocaleTimeString([], {
                     hour: '2-digit',
@@ -243,7 +205,7 @@ export default function ChatInterface() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about appointments, services, pricing, or anything else..."
+            placeholder="Type your message here..."
             className="flex-1"
           />
           <Button 

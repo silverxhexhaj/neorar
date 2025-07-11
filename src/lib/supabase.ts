@@ -11,8 +11,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Create a single client instance
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// For use in Client Components - return the same configured client
-export const createSupabaseClient = () => createClient(supabaseUrl, supabaseAnonKey) 
+// Create a single client instance to avoid multiple GoTrueClient instances
+export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
