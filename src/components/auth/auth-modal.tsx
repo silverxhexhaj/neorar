@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { LoginForm } from './login-form'
 import { SignupForm } from './signup-form'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@/components/ui/visually-hidden'
 import { Button } from '@/components/ui/button'
 
 interface AuthModalProps {
@@ -24,6 +25,11 @@ export function AuthModal({ trigger, defaultOpen = false }: AuthModalProps) {
         {trigger || <Button>Sign In</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
+        <VisuallyHidden>
+          <DialogTitle>
+            {isLoginMode ? "Sign In" : "Sign Up"}
+          </DialogTitle>
+        </VisuallyHidden>
         {isLoginMode ? (
           <LoginForm onToggleMode={toggleMode} />
         ) : (

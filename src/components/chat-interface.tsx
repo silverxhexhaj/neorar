@@ -53,13 +53,19 @@ const sendMessageToWebhook = async (message: string) => {
   }
 }
 
-export default function ChatInterface() {
+interface ChatInterfaceProps {
+  conversationId?: string
+  onConversationUpdate?: () => void
+}
+
+export default function ChatInterface({ conversationId, onConversationUpdate }: ChatInterfaceProps) {
   const { user } = useAuth()
   const { toast } = useToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -73,25 +79,41 @@ export default function ChatInterface() {
     }
   }
 
-  // Load messages when user changes or component mounts
+  // Load messages when user or conversationId changes
   useEffect(() => {
     const loadMessages = async () => {
       if (!user) {
         setMessages([])
         setLoading(false)
+        setCurrentConversationId(null)
         return
       }
 
       try {
         setLoading(true)
-        const userMessages = await ChatService.getMessagesForUser(user)
-        
-        if (userMessages.length === 0) {
-          // Create welcome message for new users
-          const welcomeMessage = await ChatService.getOrCreateWelcomeMessage(user)
-          setMessages([welcomeMessage])
+        let activeConversationId = conversationId
+
+        // If no conversationId provided, get or create active conversation
+        if (!activeConversationId) {
+          const activeConversation = await ChatService.getOrCreateActiveConversation(user)
+          if (activeConversation) {
+            activeConversationId = activeConversation.id
+            setCurrentConversationId(activeConversation.id)
+          }
         } else {
-          setMessages(userMessages)
+          setCurrentConversationId(activeConversationId)
+        }
+
+        if (activeConversationId) {
+          const conversationMessages = await ChatService.getMessagesForConversation(user, activeConversationId)
+          
+          if (conversationMessages.length === 0) {
+            // Create welcome message for new conversations
+            const welcomeMessage = await ChatService.getOrCreateWelcomeMessage(user, activeConversationId)
+            setMessages([welcomeMessage])
+          } else {
+            setMessages(conversationMessages)
+          }
         }
       } catch (error) {
         console.error('Error loading messages:', error)
@@ -106,7 +128,7 @@ export default function ChatInterface() {
     }
 
     loadMessages()
-  }, [user, toast])
+  }, [user, conversationId, toast])
 
   useEffect(() => {
     scrollToBottom()
@@ -120,19 +142,41 @@ export default function ChatInterface() {
     setIsTyping(true)
 
     try {
-      // Save user message to database
-      const userMessage = await ChatService.saveMessage(user, userInput, 'user')
-      if (userMessage) {
-        setMessages(prev => [...prev, userMessage])
+      let activeConversationId = currentConversationId
+
+      // If no active conversation, create one
+      if (!activeConversationId) {
+        const newConversation = await ChatService.createConversation(user, 'New Chat')
+        if (newConversation) {
+          activeConversationId = newConversation.id
+          setCurrentConversationId(activeConversationId)
+        }
       }
 
-      // Send message to n8n webhook and get bot response
-      const result = await sendMessageToWebhook(userInput)
-      
-      // Save bot response to database
-      const botMessage = await ChatService.saveMessage(user, result.botResponse, 'bot')
-      if (botMessage) {
-        setMessages(prev => [...prev, botMessage])
+      if (activeConversationId) {
+        // Save user message to database
+        const userMessage = await ChatService.saveMessage(user, userInput, 'user', activeConversationId)
+        if (userMessage) {
+          setMessages(prev => [...prev, userMessage])
+        }
+
+        // Send message to n8n webhook and get bot response
+        const result = await sendMessageToWebhook(userInput)
+        
+        // Save bot response to database
+        const botMessage = await ChatService.saveMessage(user, result.botResponse, 'bot', activeConversationId)
+        if (botMessage) {
+          setMessages(prev => [...prev, botMessage])
+        }
+
+        // Update conversation title if this is the first user message
+        const conversationMessages = await ChatService.getMessagesForConversation(user, activeConversationId)
+        const userMessages = conversationMessages.filter(msg => msg.sender === 'user')
+        if (userMessages.length === 1) {
+          // This is the first user message, update the conversation title
+          await ChatService.updateConversationTitleFromFirstMessage(user, activeConversationId)
+          onConversationUpdate?.()
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error)
@@ -285,21 +329,21 @@ export default function ChatInterface() {
         </div>
         
         {/* Quick suggestions - Only show when input is empty and few messages */}
-        {!inputValue && messages.length <= 1 && (
+        {!inputValue && messages.length <= 2 && (
           <div className="px-4 pb-4">
             <div className="flex flex-wrap gap-2">
               {[
-                "Book an appointment",
                 "What services do you offer?",
-                "Hair styling tips",
-                "Price information"
-              ].map((suggestion, idx) => (
+                "How can I book an appointment?",
+                "What are your hours?",
+                "Tell me about your prices"
+              ].map((suggestion, index) => (
                 <Button
-                  key={idx}
+                  key={index}
                   variant="outline"
                   size="sm"
                   onClick={() => setInputValue(suggestion)}
-                  className="text-xs rounded-full border-border/30 hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
+                  className="text-xs bg-background/50 border-border/30 hover:bg-muted/50 transition-all duration-200"
                 >
                   {suggestion}
                 </Button>

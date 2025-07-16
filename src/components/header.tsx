@@ -6,7 +6,11 @@ import { AuthModal } from "@/components/auth/auth-modal"
 import { UserMenu } from "@/components/auth/user-menu"
 import { useAuth } from "@/lib/auth-context"
 
-export default function Header() {
+interface HeaderProps {
+  children?: React.ReactNode
+}
+
+export default function Header({ children }: HeaderProps) {
   const { user, loading } = useAuth()
 
   return (
@@ -15,6 +19,7 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Logo and Brand */}
           <div className="flex items-center gap-3">
+            {children}
             <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg">
               <Scissors className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -31,13 +36,7 @@ export default function Header() {
             ) : user ? (
               <UserMenu />
             ) : (
-              <AuthModal 
-                trigger={
-                  <Button variant="default" size="sm">
-                    Sign In
-                  </Button>
-                }
-              />
+              <AuthModal />
             )}
           </div>
         </div>
