@@ -75,14 +75,16 @@ export default function ChatInterface() {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
       if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight
+        setTimeout(() => {
+          scrollElement.scrollTop = scrollElement.scrollHeight
+        }, 100)
       }
     }
   }
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, isTyping])
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
@@ -114,109 +116,155 @@ export default function ChatInterface() {
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
       handleSendMessage()
     }
   }
 
   return (
-    <div className="flex flex-col h-full bg-background border border-border rounded-lg shadow-sm animate-fade-in">
-      {/* Chat Header */}
-      <div className="border-b border-border p-4 bg-background/50 rounded-t-lg">
+    <div className="h-full flex flex-col bg-gradient-to-br from-background to-background/95 border border-border/50 rounded-xl shadow-xl backdrop-blur-sm overflow-hidden">
+      {/* Chat Header - Fixed Height */}
+      <div className="flex-shrink-0 border-b border-border/50 p-4 bg-gradient-to-r from-background/80 to-background/60 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full">
-            <MessageCircle className="h-5 w-5 text-primary" />
+          <div className="relative flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full ring-2 ring-primary/20">
+            <MessageCircle className="h-6 w-6 text-primary" />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">Chat with BarberBot</h2>
-            <p className="text-sm text-muted-foreground">Your personal barbershop assistant</p>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              Chat with BarberBot
+            </h2>
+            <p className="text-sm text-muted-foreground/80">Your personal barbershop assistant</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground/60">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Online
           </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4 custom-scrollbar" ref={scrollAreaRef}>
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex items-start gap-3 animate-fade-in ${
-                message.sender === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {message.sender === 'bot' && (
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-primary/10">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              
+      {/* Messages Area - Takes all available space */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
+          <div className="p-4 pb-6 space-y-6 min-h-full">
+            {messages.map((message, index) => (
               <div
-                className={`max-w-[80%] rounded-lg p-4 ${
-                  message.sender === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted/50 text-muted-foreground border border-border/50'
+                key={message.id}
+                className={`flex items-start gap-3 animate-in slide-in-from-bottom-2 duration-300 ${
+                  message.sender === 'user' ? 'justify-end' : 'justify-start'
                 }`}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                {message.sender === 'bot' && (
+                  <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20">
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
+                      <Bot className="h-5 w-5 text-primary" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 
-                <span className="text-xs opacity-70 mt-2 block">
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
+                <div
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] ${
+                    message.sender === 'user'
+                      ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground shadow-lg'
+                      : 'bg-gradient-to-br from-muted/80 to-muted/60 text-foreground border border-border/30 shadow-sm'
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  
+                  <span className={`text-xs mt-3 block ${
+                    message.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground/70'
+                  }`}>
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
 
-              {message.sender === 'user' && (
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-secondary">
-                    <User className="h-4 w-4" />
+                {message.sender === 'user' && (
+                  <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20">
+                    <AvatarFallback className="bg-gradient-to-br from-secondary/80 to-secondary/60">
+                      <User className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            ))}
+            
+            {isTyping && (
+              <div className="flex items-start gap-3 justify-start animate-in slide-in-from-bottom-2 duration-300">
+                <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
+                    <Bot className="h-5 w-5 text-primary" />
                   </AvatarFallback>
                 </Avatar>
-              )}
-            </div>
-          ))}
-          
-          {isTyping && (
-            <div className="flex items-start gap-3 justify-start animate-fade-in">
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback className="bg-primary/10">
-                  <Bot className="h-4 w-4 text-primary" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="bg-muted/50 text-muted-foreground rounded-lg p-4 border border-border/50">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="bg-gradient-to-br from-muted/80 to-muted/60 rounded-2xl p-4 border border-border/30 shadow-sm">
+                  <div className="flex space-x-1">
+                    <div className="w-2.5 h-2.5 bg-primary/70 rounded-full animate-bounce"></div>
+                    <div className="w-2.5 h-2.5 bg-primary/70 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2.5 h-2.5 bg-primary/70 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
 
-      {/* Input */}
-      <div className="border-t border-border p-4 bg-background/50 rounded-b-lg">
-        <div className="flex gap-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message here..."
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isTyping}
-            size="icon"
-            className="shrink-0 btn-hover-lift"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+      {/* Input Footer - Fixed at Bottom */}
+      <div className="flex-shrink-0 border-t border-border/50 bg-gradient-to-r from-background/95 to-background/90 backdrop-blur-sm">
+        <div className="p-4">
+          <div className="flex gap-3 items-end">
+            <div className="flex-1 relative">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
+                className="min-h-[48px] pr-4 py-3 text-sm bg-background/50 border-border/50 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200 resize-none"
+                disabled={isTyping}
+              />
+              {inputValue.trim() && (
+                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground/60">
+                  {inputValue.length}
+                </div>
+              )}
+            </div>
+            <Button 
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isTyping}
+              size="icon"
+              className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
+        
+        {/* Quick suggestions - Only show when input is empty and few messages */}
+        {!inputValue && messages.length === 1 && (
+          <div className="px-4 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                "Book an appointment",
+                "What services do you offer?",
+                "Hair styling tips",
+                "Price information"
+              ].map((suggestion, idx) => (
+                <Button
+                  key={idx}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue(suggestion)}
+                  className="text-xs rounded-full border-border/30 hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
