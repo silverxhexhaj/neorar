@@ -31,6 +31,7 @@ interface ChatSidebarProps {
   onNewChat: () => void
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  refreshTrigger?: number
 }
 
 export default function ChatSidebar({
@@ -38,7 +39,8 @@ export default function ChatSidebar({
   onConversationSelect,
   onNewChat,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  refreshTrigger = 0
 }: ChatSidebarProps) {
   const { user } = useAuth()
   const { toast } = useToast()
@@ -49,32 +51,32 @@ export default function ChatSidebar({
   const [editingTitle, setEditingTitle] = useState("")
 
   // Load conversations when user changes or component mounts
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!user) {
-        setConversations([])
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        const userConversations = await ChatService.getConversationsForUser(user)
-        setConversations(userConversations)
-      } catch (error) {
-        console.error('Error loading conversations:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load chat history",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+  const loadConversations = async () => {
+    if (!user) {
+      setConversations([])
+      setLoading(false)
+      return
     }
 
+    try {
+      setLoading(true)
+      const userConversations = await ChatService.getConversationsForUser(user)
+      setConversations(userConversations)
+    } catch (error) {
+      console.error('Error loading conversations:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load chat history",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     loadConversations()
-  }, [user, toast])
+  }, [user, toast, refreshTrigger])
 
   // Subscribe to real-time conversation updates
   useEffect(() => {

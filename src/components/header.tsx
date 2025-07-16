@@ -15,18 +15,12 @@ export default function Header({ children }: HeaderProps) {
 
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
+      <div className="px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo and Brand */}
           <div className="flex items-center gap-3">
             {children}
-            <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg">
-              <Scissors className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">BarberBot</h1>
-              <p className="text-sm text-muted-foreground">Your AI Assistant</p>
-            </div>
+              <h1 className="text-xl font-bold text-foreground">Elios Cutz</h1>
           </div>
 
           {/* Auth Section */}

@@ -15,6 +15,7 @@ export default function Home() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0)
 
   // Load or create active conversation when user changes
   useEffect(() => {
@@ -50,6 +51,8 @@ export default function Home() {
       if (newConversation) {
         setCurrentConversationId(newConversation.id)
         setMobileSidebarOpen(false)
+        // Trigger sidebar refresh to immediately show the new conversation
+        setSidebarRefreshTrigger(prev => prev + 1)
       }
     } catch (error) {
       console.error('Error creating new conversation:', error)
@@ -114,6 +117,7 @@ export default function Home() {
             onNewChat={handleNewChat}
             isCollapsed={sidebarCollapsed}
             onToggleCollapse={toggleSidebar}
+            refreshTrigger={sidebarRefreshTrigger}
           />
         </div>
 
@@ -137,8 +141,8 @@ export default function Home() {
              <ChatInterface 
                conversationId={currentConversationId || undefined}
                onConversationUpdate={() => {
-                 // This will trigger a re-render of the sidebar to refresh conversation list
-                 // The sidebar will automatically update via its useEffect
+                 // Trigger sidebar refresh when conversation is updated (e.g., title changes)
+                 setSidebarRefreshTrigger(prev => prev + 1)
                }}
              />
            </div>
