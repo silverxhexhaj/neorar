@@ -6,14 +6,9 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, User, Bot, MessageCircle } from "lucide-react"
-
-// Simple Message Interface
-interface ChatMessage {
-  id: string
-  content: string
-  sender: 'user' | 'bot'
-  timestamp: Date
-}
+import { useAuth } from "@/lib/auth-context"
+import { ChatService, ChatMessage } from "@/lib/chat-service"
+import { useToast } from "@/hooks/use-toast"
 
 // N8N Webhook URL for chat messages
 const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv832202.hstgr.cloud/webhook/2494dd6d-523d-4eb3-80cb-ac56ac244c5e'
@@ -59,16 +54,12 @@ const sendMessageToWebhook = async (message: string) => {
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      content: 'Welcome to BarberBot! 👋 I\'m here to help you with anything related to our barbershop. Just chat with me naturally and I\'ll do my best to assist you!',
-      sender: 'bot',
-      timestamp: new Date()
-    }
-  ])
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [loading, setLoading] = useState(true)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -82,37 +73,77 @@ export default function ChatInterface() {
     }
   }
 
+  // Load messages when user changes or component mounts
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!user) {
+        setMessages([])
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        const userMessages = await ChatService.getMessagesForUser(user)
+        
+        if (userMessages.length === 0) {
+          // Create welcome message for new users
+          const welcomeMessage = await ChatService.getOrCreateWelcomeMessage(user)
+          setMessages([welcomeMessage])
+        } else {
+          setMessages(userMessages)
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load chat history",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadMessages()
+  }, [user, toast])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, isTyping])
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || !user) return
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      content: inputValue,
-      sender: 'user',
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage])
     const userInput = inputValue
     setInputValue('')
     setIsTyping(true)
 
-    // Send message to n8n webhook and get bot response
-    const result = await sendMessageToWebhook(userInput)
-    
-    const botMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      content: result.botResponse,
-      sender: 'bot',
-      timestamp: new Date()
-    }
+    try {
+      // Save user message to database
+      const userMessage = await ChatService.saveMessage(user, userInput, 'user')
+      if (userMessage) {
+        setMessages(prev => [...prev, userMessage])
+      }
 
-    setMessages(prev => [...prev, botMessage])
-    setIsTyping(false)
+      // Send message to n8n webhook and get bot response
+      const result = await sendMessageToWebhook(userInput)
+      
+      // Save bot response to database
+      const botMessage = await ChatService.saveMessage(user, result.botResponse, 'bot')
+      if (botMessage) {
+        setMessages(prev => [...prev, botMessage])
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      })
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -120,6 +151,17 @@ export default function ChatInterface() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  // Show loading state while messages are being loaded
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col bg-gradient-to-br from-background to-background/95 border border-border/50 rounded-xl shadow-xl backdrop-blur-sm overflow-hidden">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -243,7 +285,7 @@ export default function ChatInterface() {
         </div>
         
         {/* Quick suggestions - Only show when input is empty and few messages */}
-        {!inputValue && messages.length === 1 && (
+        {!inputValue && messages.length <= 1 && (
           <div className="px-4 pb-4">
             <div className="flex flex-wrap gap-2">
               {[

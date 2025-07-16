@@ -11,10 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, MessageSquare } from 'lucide-react'
+import { ChatService } from '@/lib/chat-service'
+import { useToast } from '@/hooks/use-toast'
 
 export function UserMenu() {
   const { user, signOut } = useAuth()
+  const { toast } = useToast()
 
   if (!user) return null
 
@@ -23,6 +26,33 @@ export function UserMenu() {
       await signOut()
     } catch (error) {
       console.error('Error signing out:', error)
+    }
+  }
+
+  const handleClearChatHistory = async () => {
+    try {
+      const success = await ChatService.clearMessagesForUser(user)
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Chat history cleared successfully",
+        })
+        // Refresh the page to reload the chat interface
+        window.location.reload()
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to clear chat history",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error clearing chat history:', error)
+      toast({
+        title: "Error",
+        description: "Failed to clear chat history",
+        variant: "destructive",
+      })
     }
   }
 
@@ -53,6 +83,10 @@ export function UserMenu() {
         <DropdownMenuItem>
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleClearChatHistory}>
+          <MessageSquare className="mr-2 h-4 w-4" />
+          <span>Clear Chat History</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
